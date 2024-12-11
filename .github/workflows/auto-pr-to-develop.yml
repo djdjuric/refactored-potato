@@ -1,0 +1,35 @@
+name: Create Pull Request to Develop
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Create a pull request to develop
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          TICKET_NUMBER=$(echo $BRANCH_NAME | cut -d'/' -f2 | cut -d'-' -f2)
+          SHORT_DESC=$(echo $BRANCH_NAME | cut -d'/' -f2 | cut -d'-' -f3- | sed 's/_/ /g')
+
+          PR_TITLE="Feature - TIC-${TICKET_NUMBER} - ${SHORT_DESC}"
+
+          PR_BODY="Automated pull request from feature branch to develop"
+          BASE_BRANCH="develop"
+          HEAD_BRANCH="${BRANCH_NAME}"
+
+          gh pr create --title "$PR_TITLE" --body "$PR_BODY" --base "$BASE_BRANCH" --head "$HEAD_BRANCH" --draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
