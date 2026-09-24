@@ -1,0 +1,33 @@
+# .github/workflows/pr-to-main-guard.yml
+#
+# Then make "guard" a required status check on main:
+#   Settings -> Rules (or Branches -> Branch protection) -> main -> Require status checks
+#
+# If it fails with "not merged to develop": merge the branch to develop, then
+# re-run this job from the PR -- a merge into develop doesn't re-trigger it.
+
+name: pr-to-main-guard
+
+on:
+  pull_request:
+    branches: [main]
+    # labeled/unlabeled so adding the 'rebased-own-commits' override re-runs the check
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the guard walks history; the default shallow clone breaks it
+
+      - name: Block leaked, copied and untested commits
+        env:
+          # head.sha, not HEAD -- on pull_request events HEAD is a synthetic merge commit
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: bash .github/scripts/pr-to-main-guard.sh "$HEAD_SHA"
